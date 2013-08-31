@@ -9,8 +9,9 @@ An evented interface for your Razer Hydra controller.
 1. Install [Sixense's Hyrda SDK](http://sixense.com/developers)
 2. Clone this repo to node\_modules/node-hydra (npm install coming soon)
 3. Check lib path in bindings.gyp in case libsixense got installed to somewhere different than me
-4. `$ node-gyp configure`
+4. Copy sixense.h from SDK bundle to src/sixense/sixense.h
 5. `$ node-gyp build`
+6. `$ node-gyp configure`
 
 
 ## Usage
