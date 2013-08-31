@@ -1,0 +1,6 @@
+.DS_Store
+todo.md
+build/
+node_modules/
+lib/*
+src/sixense

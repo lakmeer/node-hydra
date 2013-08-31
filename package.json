@@ -1,0 +1,19 @@
+{
+  "name": "node-hydra",
+  "description": "Evented interface to the Razer Hydra controller",
+  "version": "0.1.0",
+  "author": "lakmeer (lakmeer.com)",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/lakmeer/node-hydra"
+  },
+  "main": "lib/hydra.js",
+  "scripts" : {
+    "prepublish" : "lsc -c --output lib src/**/*.ls"
+  },
+  "dependencies" : { },
+  "devDependencies": {
+    "LiveScript": ">=1.2",
+    "prelude-ls": ">=1.0"
+  }
+}
