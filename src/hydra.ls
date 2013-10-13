@@ -35,22 +35,25 @@ smooth = weighted-average [ -21 14 39 54 59 ]
 
 DEFAULT_POLLING_RATE = 8ms
 
+last-frame = null
+
 
 #
 # Start Hydra and Schedule Auto-stop
 #
 
-log 'Connecting to Hydra...'
+init = ->
 
-Hydra.init!
+  log 'Connecting to Hydra...'
+  Hydra.init!
 
-process.on \exit, ->
-  clear-interval update-timer
-  Hydra.exit!
+  process.on \exit, ->
+    clear-interval update-timer
+    Hydra.exit!
 
-last-frame = Hydra.update!
+  last-frame := Hydra.update!
 
-log 'Hydra ready.'
+  log 'Hydra ready.'
 
 
 #
@@ -139,6 +142,11 @@ on-poll = ->
     for λ in that
       λ { old: last-frame, new: this-frame }
 
+  # Dispatch diff list
+  if subscribers.diff?
+    for λ in that
+      λ diffs
+
   # Save frame
   last-frame := this-frame
 
@@ -157,6 +165,7 @@ stop-polling  = -> clear-interval update-timer
 # Publish public interface
 
 module.exports =
+  init : init
   on : (event-name, λ) -> subscribe event-name, λ
   start : -> start-polling!
   stop  : -> stop-polling!
