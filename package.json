@@ -1,7 +1,7 @@
 {
   "name": "node-hydra",
   "description": "Evented interface to the Razer Hydra controller",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": "lakmeer (lakmeer.com)",
   "repository": {
     "type": "git",
@@ -13,7 +13,6 @@
   },
   "dependencies" : { },
   "devDependencies": {
-    "LiveScript": ">=1.2",
-    "prelude-ls": ">=1.0"
+    "LiveScript": "^1.4.0"
   }
 }

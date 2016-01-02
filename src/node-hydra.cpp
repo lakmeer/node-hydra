@@ -9,7 +9,6 @@
 
 #include "sixense/sixense.h"
 
-
 using namespace std;
 using namespace v8;
 
@@ -49,11 +48,9 @@ int  sequenceNum;
 bool hasBeenInitialised = false;
 
 
-
-
 // Helpers
 
-bool bitAt ( unsigned int byte, int bit ) {
+inline bool bitAt ( unsigned int byte, int bit ) {
   return (bool)( ( byte & PO2[bit] ) >> bit );
 }
 
@@ -79,17 +76,24 @@ int toOctant ( float b, float r ) {
          (b > oT[6] && b < oT[7]) ? 8 : 1;
 }
 
+Local<String> NewSymbol (Isolate* isolate, const char* str) {
+  return String::NewFromUtf8(isolate, str, String::kInternalizedString);
+}
 
 
 // Start hydra, wait for 1 base station and 2 controllers to connect
 
-Handle<Value> Init( const Arguments& args ) {
-  HandleScope scope;
+// Handle<Value> Init( const internal::Arguments& args ) {
+  // HandleScope scope;
+
+void Init( const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
 
   int init = sixenseInit();
 
   if ( init > 0 ) {
-    ThrowException(Exception::Error(String::New("Hydra init failed. Check connection.")));
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Hydra init failed. Check connection.")));
+    return;
   }
 
   while ( !sixenseIsBaseConnected(0) ) { usleep( 1000 ); }
@@ -98,28 +102,39 @@ Handle<Value> Init( const Arguments& args ) {
   sixenseSetActiveBase(0);
   hasBeenInitialised = true;
 
-  return scope.Close( Number::New( init ) );
+  args.GetReturnValue().Set( Number::New( isolate, init ) );
+  // return scope.Close( Number::New( init ) );
 }
 
 // Shut down hydra
 
-Handle<Value> Exit( const Arguments& args ) {
-  HandleScope scope;
+// Handle<Value> Exit( const internal::Arguments& args ) {
+  // HandleScope scope;
+
+void Exit( const FunctionCallbackInfo<Value>& args ) {
+  Isolate* isolate = args.GetIsolate();
+
   int res;
 
   if ( !hasBeenInitialised ) {
-    ThrowException(Exception::Error(String::New("No need to exit - Hyrda not initialised.")));
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "No need to exit - Hyrda not initialised.")));
+    return;
   } else {
     res = sixenseExit();
   }
 
-  return scope.Close( Number::New( res ) );
+  args.GetReturnValue().Set( Number::New( isolate, res ) );
+  // return scope.Close( Number::New( res ) );
 }
 
 // Get controller data
 
-Handle<Value> Update( const Arguments& args ) {
-  HandleScope scope;
+// Handle<Value> Update( const internal::Arguments& args ) {
+  // HandleScope scope;
+
+void Update( const FunctionCallbackInfo<Value>& args ) {
+
+  Isolate* isolate = args.GetIsolate();
 
   // Get time since last update
   now     = clock();
@@ -127,15 +142,15 @@ Handle<Value> Update( const Arguments& args ) {
   then    = now;
 
   if ( !hasBeenInitialised ) {
-    ThrowException(Exception::Error(String::New("Hydra not initialised yet.")));
+    isolate->ThrowException(Exception::Error(String::NewFromUtf8(isolate, "Hydra not initialised yet.")));
   }
 
   // Get raw data from Hydra
   sixenseGetAllNewestData( &allControllerData );
 
   // Set up scaffolding of new JS object
-  Local<Object> acd         = Object::New();
-  Local<Object> controllers = Array::New();
+  Local<Object> acd         = Object::New(isolate);
+  Local<Object> controllers = Array::New(isolate);
 
   // Process Controllers individually
   for ( int i_c = 0; i_c < sixenseGetNumActiveControllers(); i_c++ ) {
@@ -144,7 +159,7 @@ Handle<Value> Update( const Arguments& args ) {
     controllerData = allControllerData.controllers[i_c];
 
     // Create new JS object to represent controller
-    Local<Object> controller  = Object::New();
+    Local<Object> controller  = Object::New(isolate);
 
 
     //
@@ -164,26 +179,26 @@ Handle<Value> Update( const Arguments& args ) {
 
     // Position/Time Derivatives
 
-    Local<Object> js_pos = Array::New();
+    Local<Object> js_pos = Array::New(isolate);
     for (int i_pos = 0; i_pos < 3; i_pos++ ) {
-      js_pos->Set( Number::New(i_pos), Number::New( controllerData.pos[i_pos] )  );
+      js_pos->Set( Number::New(isolate, i_pos), Number::New( isolate, controllerData.pos[i_pos] )  );
     }
-    controller->Set( String::NewSymbol("position"), js_pos  );
+    controller->Set( NewSymbol(isolate, "position"), js_pos  );
 
 
     // Rotation Matrix
     // Rotation Quaternion
 
-    Local<Object> rot = Array::New();
+    Local<Object> rot = Array::New(isolate);
     for (int i_rot = 0; i_rot < 4; i_rot++ ) {
-      rot->Set( Number::New(i_rot), Number::New( controllerData.rot_quat[i_rot] ));
+      rot->Set( Number::New(isolate, i_rot), Number::New(isolate, controllerData.rot_quat[i_rot] ));
     }
-    controller->Set( String::NewSymbol("rotation"), rot );
+    controller->Set( NewSymbol(isolate, "rotation"), rot );
 
 
     // Joystick
 
-    Local<Object> joystick = Object::New();
+    Local<Object> joystick = Object::New(isolate);
 
     // Cartesian
     float x = controllerData.joystick_x;
@@ -198,47 +213,46 @@ Handle<Value> Update( const Arguments& args ) {
     int quad = toQuadrant(b, r);
     int oct  = toOctant(b, r);
 
-    joystick->Set( String::NewSymbol("x"), Number::New( x ));
-    joystick->Set( String::NewSymbol("y"), Number::New( y ));
-    joystick->Set( String::NewSymbol("r"), Number::New( r ));
-    joystick->Set( String::NewSymbol("θ"), Number::New( t ));
+    joystick->Set( NewSymbol(isolate, "x"), Number::New( isolate, x ));
+    joystick->Set( NewSymbol(isolate, "y"), Number::New( isolate, y ));
+    joystick->Set( NewSymbol(isolate, "r"), Number::New( isolate, r ));
+    joystick->Set( NewSymbol(isolate, "θ"), Number::New( isolate, t ));
 
-    joystick->Set( String::NewSymbol("bearing"),  Number::New( b ));
-    joystick->Set( String::NewSymbol("quadrant"), Number::New( quad ));
-    joystick->Set( String::NewSymbol("octant"),   Number::New( oct  ));
+    joystick->Set( NewSymbol(isolate, "bearing"),  Number::New( isolate, b ));
+    joystick->Set( NewSymbol(isolate, "quadrant"), Number::New( isolate, quad ));
+    joystick->Set( NewSymbol(isolate, "octant"),   Number::New( isolate, oct  ));
 
-    controller->Set( String::NewSymbol("joystick"), joystick );
+    controller->Set( NewSymbol(isolate, "joystick"), joystick );
 
 
     // Trigger
 
-    controller->Set( String::NewSymbol("trigger"), Number::New( controllerData.trigger ));
+    controller->Set( NewSymbol(isolate, "trigger"), Number::New( isolate, controllerData.trigger ));
 
 
     // Buttons
 
-    Local<Object> buttons = Object::New();
+    Local<Object> buttons = Object::New(isolate);
 
-    buttons->Set( String::NewSymbol("button1"),  Boolean::New( bitAt( controllerData.buttons, 5 )));
-    buttons->Set( String::NewSymbol("button2"),  Boolean::New( bitAt( controllerData.buttons, 6 )));
-    buttons->Set( String::NewSymbol("button3"),  Boolean::New( bitAt( controllerData.buttons, 3 )));
-    buttons->Set( String::NewSymbol("button4"),  Boolean::New( bitAt( controllerData.buttons, 4 )));
+    buttons->Set( NewSymbol(isolate, "button1"),  Boolean::New( isolate, bitAt( controllerData.buttons, 5 )));
+    buttons->Set( NewSymbol(isolate, "button2"),  Boolean::New( isolate, bitAt( controllerData.buttons, 6 )));
+    buttons->Set( NewSymbol(isolate, "button3"),  Boolean::New( isolate, bitAt( controllerData.buttons, 3 )));
+    buttons->Set( NewSymbol(isolate, "button4"),  Boolean::New( isolate, bitAt( controllerData.buttons, 4 )));
 
-    buttons->Set( String::NewSymbol("home"),     Boolean::New( bitAt( controllerData.buttons, 0 )));
-    buttons->Set( String::NewSymbol("bumper"),   Boolean::New( bitAt( controllerData.buttons, 7 )));
-    buttons->Set( String::NewSymbol("joystick"), Boolean::New( bitAt( controllerData.buttons, 8 )));
+    buttons->Set( NewSymbol(isolate, "home"),     Boolean::New( isolate, bitAt( controllerData.buttons, 0 )));
+    buttons->Set( NewSymbol(isolate, "bumper"),   Boolean::New( isolate, bitAt( controllerData.buttons, 7 )));
+    buttons->Set( NewSymbol(isolate, "joystick"), Boolean::New( isolate, bitAt( controllerData.buttons, 8 )));
 
-    buttons->Set( String::NewSymbol("bitmask"),  Number::New( controllerData.buttons ));
+    buttons->Set( NewSymbol(isolate, "bitmask"),  Number::New( isolate, controllerData.buttons ));
 
-    controller->Set( String::NewSymbol("buttons"), buttons );
-
+    controller->Set( NewSymbol(isolate, "buttons"), buttons );
 
     // Attach newly genereated controller data to JS ACD object
-    controllers->Set( Number::New(i_c), controller );
+    controllers->Set( Number::New(isolate, i_c), controller );
   }
 
   // Calculate separation
-  Local<Object> separation = Array::New();
+  Local<Object> separation = Array::New(isolate);
 
   float sep[3];
 
@@ -246,31 +260,35 @@ Handle<Value> Update( const Arguments& args ) {
     sep[i_sep] =
       allControllerData.controllers[0].pos[i_sep] -
         allControllerData.controllers[1].pos[i_sep];
-    separation->Set( Number::New(i_sep), Number::New(sep[i_sep]));
+    separation->Set( Number::New(isolate, i_sep), Number::New(isolate, sep[i_sep]));
   }
 
-  separation->Set( Number::New( 3 ),
-    Number::New(
+  separation->Set( Number::New( isolate, 3 ),
+    Number::New( isolate,
       sqrt( sep[0] * sep[0] + sep[1] * sep[1] + sep[2] * sep[2])
     )
   );
 
   // Add top-level data to ACD object
-  acd->Set( String::NewSymbol("sequenceNum"), Number::New( sequenceNum ) );
-  acd->Set( String::NewSymbol("elapsedTime"), Number::New( elapsed ) );
-  acd->Set( String::NewSymbol("controllers"), controllers );
-  acd->Set( String::NewSymbol("separation"),  separation );
+  acd->Set( NewSymbol(isolate, "sequenceNum"), Number::New( isolate, sequenceNum ) );
+  acd->Set( NewSymbol(isolate, "elapsedTime"), Number::New( isolate, elapsed ) );
+  acd->Set( NewSymbol(isolate, "controllers"), controllers );
+  acd->Set( NewSymbol(isolate, "separation"),  separation );
 
   // Return ACD object to Node
-  return scope.Close( acd );
+  args.GetReturnValue().Set( acd );
+  // return scope.Close( acd );
 }
 
 
 void ModuleBind( Handle<Object> exports ) {
 
-  exports->Set(String::NewSymbol("update"), FunctionTemplate::New( Update )->GetFunction());
-  exports->Set(String::NewSymbol("init"),   FunctionTemplate::New( Init   )->GetFunction());
-  exports->Set(String::NewSymbol("exit"),   FunctionTemplate::New( Exit   )->GetFunction());
+  NODE_SET_METHOD(exports, "update", Update);
+  NODE_SET_METHOD(exports, "init",   Init);
+  NODE_SET_METHOD(exports, "exit",   Exit);
+  // exports->Set(NewSymbol(isolate, "update"), FunctionTemplate::New( Update )->GetFunction());
+  // exports->Set(NewSymbol(isolate, "init"),   FunctionTemplate::New( Init   )->GetFunction());
+  // exports->Set(NewSymbol(isolate, "exit"),   FunctionTemplate::New( Exit   )->GetFunction());
 
 }
 
