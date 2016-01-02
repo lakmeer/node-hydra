@@ -33,7 +33,7 @@ hydra.start
 This Hydra module uses an even subscription interface, which should be familiar to Javascript developers. Events are identified by dotted.accessors.like.this. Eg:
 
 ``` Livescript
-hydra.on "controllers.0.buttons.1', (frame) ->
+hydra.on "controllers.0.buttons.button1', (frame) ->
   ...
 
 hydra.on "controllers.1.trigger', (frame) ->
