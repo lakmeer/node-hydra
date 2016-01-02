@@ -12,9 +12,8 @@
 
 # Helpers
 
-{ flip } = require \prelude-ls
-
 log    = -> console.log.apply console, &; &0
+flip   = (λ) -> (a, b) -> λ b, a
 every  = flip set-interval
 remove = (ix, list) -> [ x for x, i in list when i isnt ix ]
 
@@ -44,7 +43,7 @@ last-frame = null
 
 init = ->
 
-  log 'Connecting to Hydra...'
+  log 'Hydra::Init - connecting to Hydra...'
   Hydra.init!
 
   process.on \exit, ->
@@ -53,7 +52,7 @@ init = ->
 
   last-frame := Hydra.update!
 
-  log 'Hydra ready.'
+  log 'Hydra::Init - ready.'
 
 
 #
@@ -65,7 +64,7 @@ init = ->
 subscribers = {}
 
 subscribe = (event-name, λ) ->
-  log 'Subscribing to:', event-name
+  log 'Hydra::On - subscribing to:', event-name
   if subscribers[ event-name ]?
     that.push λ
   else
@@ -107,7 +106,7 @@ derivator = (scale-factor = 1) ->
 # Each derivator keeps track of its own time, so we need
 # one for each controller or they'll confuse each other
 
-compute-vel  = [ (derivator 150), (derivator 150) ]
+# compute-vel  = [ (derivator 150), (derivator 150) ]
 # compute-acc  = [ (derivator 150), (derivator 150) ]
 # compute-jerk = [ (derivator 150), (derivator 150) ]
 
@@ -122,9 +121,8 @@ on-poll = ->
   this-frame = Hydra.update!
 
   # Include derivatives
-  for controller, ix in this-frame.controllers
-    # controller.position = p
-    controller.velocity     = compute-vel[ix] controller.position
+  # for controller, ix in this-frame.controllers
+    #controller.velocity     = compute-vel[ix] controller.position
     #controller.acceleration = compute-acc[ix] controller.velocity
     #controller.jerk         = compute-jerk[ix] controller.acceleration
 
@@ -140,12 +138,12 @@ on-poll = ->
   # Dispatch special events
   if subscribers.update?
     for λ in that
-      λ { old: last-frame, new: this-frame }
+      λ old: last-frame, new: this-frame, diffs: diffs
 
   # Dispatch diff list
-  if subscribers.diff?
-    for λ in that
-      λ diffs
+  # if subscribers.diff?
+  #   for λ in that
+  #     λ diffs
 
   # Save frame
   last-frame := this-frame
@@ -158,16 +156,26 @@ on-poll = ->
 polling-rate = DEFAULT_POLLING_RATE
 update-timer = 0
 
-start-polling = -> update-timer := every polling-rate, on-poll
-stop-polling  = -> clear-interval update-timer
+start-polling = ->
+  clear-interval update-timer
+  log "Hydra::Start - polling at #{ 1000 / polling-rate }Hz"
+  update-timer := every polling-rate, on-poll
+
+stop-polling  = ->
+  log "Hydra::Stop - polling halted"
+  clear-interval update-timer
 
 
 # Publish public interface
 
 module.exports =
-  init : init
+  init  : init
+  start : start-polling
+  stop  : stop-polling
+
   on : (event-name, λ) -> subscribe event-name, λ
-  start : -> start-polling!
-  stop  : -> stop-polling!
-  set-polling-rate : -> polling-rate := it
+
+  set-polling-rate : ->
+    polling-rate := it
+    start-polling!
 

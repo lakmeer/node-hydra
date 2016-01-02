@@ -9,7 +9,7 @@
   },
   "main": "lib/hydra.js",
   "scripts" : {
-    "prepublish" : "lsc -c --output lib src/**/*.ls"
+    "prepublish" : "lsc -c --output lib src/*.ls"
   },
   "dependencies" : { },
   "devDependencies": {
