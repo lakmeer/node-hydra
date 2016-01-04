@@ -9,7 +9,8 @@
   },
   "main": "lib/hydra.js",
   "scripts" : {
-    "prepublish" : "lsc -c --output lib src/*.ls"
+    "prepublish" : "lsc -c --output lib src/*.ls",
+    "postinstall" : "node-gyp configure && node-gyp build"
   },
   "dependencies" : { },
   "devDependencies": {
